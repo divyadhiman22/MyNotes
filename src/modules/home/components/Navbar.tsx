@@ -18,13 +18,34 @@ const Navbar = () => {
   useEffect(() => {
     // Set up an auth state listener from Firebase
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsAuthenticated(!!user); // Set to true if user exists, false otherwise
+      const isUserAuthenticated = !!user;
+      setIsAuthenticated(isUserAuthenticated); // Set to true if user exists, false otherwise
       setIsLoading(false); // Set loading to false once we have auth state
+      
+      // Redirect authenticated users to Home if they're on the landing page
+      if (isUserAuthenticated) {
+        if (location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup') {
+          navigate('/home');
+        }
+      } else {
+        // Redirect unauthenticated users away from protected routes
+        const protectedRoutes = ['/home', '/add', '/view', '/edit'];
+        if (protectedRoutes.includes(location.pathname)) {
+          navigate('/login');
+        }
+      }
     });
 
     // Clean up subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, [navigate, location.pathname]);
+
+  // Add another effect to handle page refresh and make Home the default for authenticated users
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && location.pathname === '/') {
+      navigate('/home');
+    }
+  }, [isLoading, isAuthenticated, location.pathname, navigate]);
 
   const handleLogout = async () => {
     try {
