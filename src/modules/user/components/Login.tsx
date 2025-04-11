@@ -32,6 +32,7 @@ const Login = () => {
         try {
             await signInWithGoogle();
             localStorage.setItem("isAuthenticated", "true");
+            localStorage.setItem("freshLogin", "true"); // Set fresh login flag
             setAlert({ 
               type: "success", 
               message: "Google sign-in successful!" 
@@ -53,6 +54,7 @@ const Login = () => {
         try {
             await loginWithEmailPassword(data.email, data.password);
             localStorage.setItem("isAuthenticated", "true");
+            localStorage.setItem("freshLogin", "true"); // Set fresh login flag
             setAlert({ 
               type: "success", 
               message: "Login successful!" 

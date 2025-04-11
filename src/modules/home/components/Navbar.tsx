@@ -14,15 +14,33 @@ const Navbar = () => {
     type: "success" | "error"; 
     message: string; 
   } | null>(null);
+  const [showLoginSuccess, setShowLoginSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     // Set up an auth state listener from Firebase
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const wasAuthenticated = isAuthenticated;
       const isUserAuthenticated = !!user;
+      
       setIsAuthenticated(isUserAuthenticated); // Set to true if user exists, false otherwise
       setIsLoading(false); // Set loading to false once we have auth state
       
-      // Redirect authenticated users to Home if they're on the landing page
+      // Show login success alert ONLY if user just logged in (not on refresh)
+      if (!wasAuthenticated && isUserAuthenticated) {
+        // Check if this is a fresh login using local storage flag
+        const freshLogin = localStorage.getItem("freshLogin");
+        if (freshLogin === "true") {
+          setShowLoginSuccess(true);
+          setAlert({
+            type: "success",
+            message: "Login successful! Welcome to MyNotes!"
+          });
+          // Clear the flag after showing the message
+          localStorage.removeItem("freshLogin");
+        }
+      }
+      
+      // Redirect authenticated users to HomeNote if they're on the landing page
       if (isUserAuthenticated) {
         if (location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup') {
           navigate('/home');
@@ -30,17 +48,17 @@ const Navbar = () => {
       } else {
         // Redirect unauthenticated users away from protected routes
         const protectedRoutes = ['/home', '/add', '/view', '/edit'];
-        if (protectedRoutes.includes(location.pathname)) {
-          navigate('/login');
+        if (protectedRoutes.some(route => location.pathname.startsWith(route))) {
+          navigate('/');
         }
       }
     });
 
     // Clean up subscription on unmount
     return () => unsubscribe();
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, isAuthenticated]);
 
-  // Add another effect to handle page refresh and make Home the default for authenticated users
+  // Add another effect to handle page refresh and make HomeNote the default for authenticated users
   useEffect(() => {
     if (!isLoading && isAuthenticated && location.pathname === '/') {
       navigate('/home');
@@ -65,7 +83,15 @@ const Navbar = () => {
   };
 
   const handleAlertConfirm = async () => {
-    if (alert?.type === "success") {
+    // Handle login success alert
+    if (showLoginSuccess) {
+      setAlert(null);
+      setShowLoginSuccess(false);
+      return;
+    }
+    
+    // Handle logout confirmation
+    if (alert?.type === "success" && alert?.message === "Are you sure you want to log out?") {
       try {
         await logoutUser(); // Only log out after confirmation
         // Show success message
@@ -81,6 +107,10 @@ const Navbar = () => {
           message: "Failed to log out. Please try again." 
         });
       }
+    } else if (alert?.message === "You have been successfully logged out.") {
+      navigate("/"); // Navigate to main homepage after logout
+      setAlert(null);
+      setIsMenuOpen(false);
     } else {
       // For error alerts, just close the alert
       setAlert(null);
@@ -89,7 +119,7 @@ const Navbar = () => {
   };
 
   const handleLogoutSuccess = () => {
-    navigate("/");
+    navigate("/"); // Navigate to main homepage after logout
     setAlert(null);
     setIsMenuOpen(false);
   };
@@ -145,11 +175,15 @@ const Navbar = () => {
             <Alert
               type={alert.type}
               message={alert.message}
-              onConfirm={alert.message === "You have been successfully logged out." ? handleLogoutSuccess : handleAlertConfirm}
+              onConfirm={showLoginSuccess ? handleAlertConfirm : 
+                alert.message === "You have been successfully logged out." ? handleLogoutSuccess : handleAlertConfirm}
               onCancel={handleAlertCancel}
-              confirmText={alert.message === "You have been successfully logged out." ? "OK" : "Yes, Log Out"}
+              confirmText={showLoginSuccess ? "OK Done!" : 
+                alert.message === "You have been successfully logged out." ? "OK" : "Yes, Log Out"}
               cancelText="Cancel"
-              showCancelButton={alert.message !== "You have been successfully logged out." && alert.message !== "Failed to log out. Please try again."}
+              showCancelButton={!showLoginSuccess && 
+                alert.message !== "You have been successfully logged out." && 
+                alert.message !== "Failed to log out. Please try again."}
             />
           </div>
         )}
