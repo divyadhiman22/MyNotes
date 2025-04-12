@@ -54,15 +54,31 @@ export const loginWithEmailPassword = async (email: string, password: string) =>
 // Signing in with Google
 export const signInWithGoogle = async () => {
   try {
+    // Force Google to prompt the user to select an account
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
     const result = await signInWithPopup(auth, googleProvider);
+    console.log("Google sign-in result:", result);
+    
     const token = await result.user.getIdToken();
     localStorage.setItem('access_token', token);
     
+    console.log("Token stored, creating user document if needed...");
     // Check if user document exists, create if it doesn't
-    await createUserDocumentIfNotExists(result.user);
+    const userDoc = await createUserDocumentIfNotExists(result.user);
+    console.log("User document status:", userDoc);
     
     return result;
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Google sign-in error:", error);
+    // Handle specific error codes
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Sign-in window was closed. Please try again.');
+    } else if (error.code === 'auth/popup-blocked') {
+      throw new Error('Pop-up was blocked by your browser. Please enable pop-ups for this site.');
+    }
     throw error;
   }
 };
