@@ -28,38 +28,44 @@ const Login = () => {
     };
 
     const handleGoogleSignIn = async () => {
-        // setLoading(true);
         try {
             await signInWithGoogle();
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("freshLogin", "true"); // Set fresh login flag
+            localStorage.setItem("freshLogin", "true");
+            
+            // Set alert state
             setAlert({ 
               type: "success", 
               message: "Google sign-in successful!" 
             });
-            // No navigation here - will wait for user to confirm
+            console.log("Google login successful, alert set");
+            
+            // No automatic redirection - will wait for user to click OK
+            
         } catch (error) {
             console.error("Google sign-in failed:", error);
             setAlert({ 
               type: "error", 
               message: "Google sign-in failed. Please try again." 
             });
-        } finally {
-            // setLoading(false);
         }
     };
 
     const doLogin = async (data: UserLoginSchema) => {
-        // setLoading(true);
         try {
             await loginWithEmailPassword(data.email, data.password);
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("freshLogin", "true"); // Set fresh login flag
+            localStorage.setItem("freshLogin", "true");
+            
+            // Force update alert state
             setAlert({ 
-              type: "success", 
-              message: "Login successful!" 
+                type: "success", 
+                message: "Login successful!" 
             });
-            // No navigation here - will wait for user to confirm
+            console.log("Email login successful, alert set");
+            
+            // No automatic redirection - will wait for user to click OK
+            
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.error("Login error:", error);
@@ -70,12 +76,11 @@ const Login = () => {
             }
             
             setAlert({ type: "error", message: errorMessage });
-        } finally {
-            // setLoading(false);
         }
     };
 
     const handleAlertConfirm = () => {
+        console.log("Alert confirmed");
         // Only navigate on successful login after user clicks OK
         if (alert?.type === "success") {
             navigate("/home");
@@ -92,13 +97,16 @@ const Login = () => {
                 </button>
                 <h1 className="font-bold text-2xl sm:text-3xl md:text-4xl p-2 sm:p-4 mt-4 sm:mt-8">SIGN IN</h1>
                 
+                {/* Place Alert in a fixed position with high z-index */}
                 {alert && (
-                    <Alert
-                        type={alert.type}
-                        message={alert.message}
-                        onConfirm={handleAlertConfirm}
-                        confirmText="OK Done!"
-                    />
+                    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur bg-opacity-30">
+                        <Alert
+                            type={alert.type}
+                            message={alert.message}
+                            onConfirm={handleAlertConfirm}
+                            confirmText="OK Done!"
+                        />
+                    </div>
                 )}
                 
                 <form onSubmit={handleSubmit(doLogin)} className="w-full max-w-sm px-4">

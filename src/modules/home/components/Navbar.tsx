@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom"; 
 import { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, logoutUser } from "@/modules/auth/services/firebase";
@@ -15,6 +15,8 @@ const Navbar = () => {
     message: string; 
   } | null>(null);
   const [showLoginSuccess, setShowLoginSuccess] = useState<boolean>(false);
+  // New state to control navigation redirection
+  const [shouldRedirect, setShouldRedirect] = useState<boolean>(false);
 
   useEffect(() => {
     // Set up an auth state listener from Firebase
@@ -25,30 +27,45 @@ const Navbar = () => {
       setIsAuthenticated(isUserAuthenticated); // Set to true if user exists, false otherwise
       setIsLoading(false); // Set loading to false once we have auth state
       
+      console.log('Auth state changed:', { wasAuthenticated, isUserAuthenticated });
+      console.log('Fresh login flag:', localStorage.getItem("freshLogin"));
+      
       // Show login success alert ONLY if user just logged in (not on refresh)
-      if (!wasAuthenticated && isUserAuthenticated) {
+      if (isUserAuthenticated) {
         // Check if this is a fresh login using local storage flag
         const freshLogin = localStorage.getItem("freshLogin");
         if (freshLogin === "true") {
-          setShowLoginSuccess(true);
-          setAlert({
-            type: "success",
-            message: "Login successful! Welcome to MyNotes!"
-          });
-          // Clear the flag after showing the message
-          localStorage.removeItem("freshLogin");
+          console.log("Fresh login detected, showing success message");
+          
+          // Slight delay to ensure component is fully mounted
+          setTimeout(() => {
+            setShowLoginSuccess(true);
+            setAlert({
+              type: "success",
+              message: "Login successful! Welcome to MyNotes!"
+            });
+            // Clear the flag after showing the message
+            localStorage.removeItem("freshLogin");
+          }, 500);
+          
+          // Return early - don't do any redirects until user confirms the alert
+          return;
         }
-      }
-      
-      // Redirect authenticated users to HomeNote if they're on the landing page
-      if (isUserAuthenticated) {
-        if (location.pathname === '/' || location.pathname === '/login' || location.pathname === '/signup') {
-          navigate('/home');
+        
+        // Only redirect if shouldRedirect flag is true or not on login/signup pages
+        if (shouldRedirect || 
+            (location.pathname !== '/login' && location.pathname !== '/signup')) {
+          // Redirect authenticated users to HomeNote if they're on the landing page
+          if (location.pathname === '/') {
+            console.log("Redirecting authenticated user to /home");
+            navigate('/home');
+          }
         }
       } else {
         // Redirect unauthenticated users away from protected routes
         const protectedRoutes = ['/home', '/add', '/view', '/edit'];
         if (protectedRoutes.some(route => location.pathname.startsWith(route))) {
+          console.log("Redirecting unauthenticated user to /");
           navigate('/');
         }
       }
@@ -56,14 +73,14 @@ const Navbar = () => {
 
     // Clean up subscription on unmount
     return () => unsubscribe();
-  }, [navigate, location.pathname, isAuthenticated]);
+  }, [navigate, location.pathname, isAuthenticated, shouldRedirect]);
 
   // Add another effect to handle page refresh and make HomeNote the default for authenticated users
   useEffect(() => {
-    if (!isLoading && isAuthenticated && location.pathname === '/') {
+    if (!isLoading && isAuthenticated && location.pathname === '/' && shouldRedirect) {
       navigate('/home');
     }
-  }, [isLoading, isAuthenticated, location.pathname, navigate]);
+  }, [isLoading, isAuthenticated, location.pathname, navigate, shouldRedirect]);
 
   const handleLogout = async () => {
     try {
@@ -85,8 +102,14 @@ const Navbar = () => {
   const handleAlertConfirm = async () => {
     // Handle login success alert
     if (showLoginSuccess) {
+      console.log("Confirming login success alert");
       setAlert(null);
       setShowLoginSuccess(false);
+      // Allow redirects after they've seen the welcome message
+      setShouldRedirect(true);
+      
+      // After confirming login success, navigate to home
+      navigate('/home');
       return;
     }
     
@@ -162,6 +185,8 @@ const Navbar = () => {
     );
   }
 
+  console.log("Current alert state:", alert, "showLoginSuccess:", showLoginSuccess);
+
   return (
     <nav className="w-full p-2 shadow-md bg-white">
       <div className="container mx-auto flex justify-between items-center w-[90%] p-2 flex-wrap relative">
@@ -169,9 +194,9 @@ const Navbar = () => {
           <span className="text-[#fca311]">My</span>Notes
         </h1>
 
-        {/* Alert Component */}
+        {/* Alert Component - Fixed position for better visibility */}
         {alert && (
-          <div className="fixed inset-0 z-50">
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
             <Alert
               type={alert.type}
               message={alert.message}
@@ -204,7 +229,7 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               <NavLink 
-                to="/home" 
+                to="/home"
                 className="text-black font-bold hover:text-[#fca311] w-full md:w-auto text-center py-2 md:py-0"
                 onClick={() => setIsMenuOpen(false)}
               >
