@@ -36,7 +36,7 @@ const Login = () => {
             // Set alert state
             setAlert({ 
               type: "success", 
-              message: "Google sign-in successful!" 
+              message: "Login successful! Welcome to MyNotes!" 
             });
             console.log("Google login successful, alert set");
             
@@ -60,7 +60,7 @@ const Login = () => {
             // Force update alert state
             setAlert({ 
                 type: "success", 
-                message: "Login successful!" 
+                message: "Login successful! Welcome to MyNotes!" 
             });
             console.log("Email login successful, alert set");
             
@@ -81,12 +81,12 @@ const Login = () => {
 
     const handleAlertConfirm = () => {
         console.log("Alert confirmed");
-        // Only navigate on successful login after user clicks OK
-        if (alert?.type === "success") {
-            navigate("/home");
-        }
-        // Close the alert in all cases
+        
+        // Clear the alert first
         setAlert(null);
+        
+        // Only navigate on successful login after user clicks OK
+        navigate("/home");
     };
 
     return (
@@ -99,7 +99,7 @@ const Login = () => {
                 
                 {/* Place Alert in a fixed position with high z-index */}
                 {alert && (
-                    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur bg-opacity-30">
+                    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur bg-black bg-opacity-30">
                         <Alert
                             type={alert.type}
                             message={alert.message}

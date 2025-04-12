@@ -14,7 +14,7 @@ const Navbar = () => {
     type: "success" | "error"; 
     message: string; 
   } | null>(null);
-  const [showLoginSuccess, setShowLoginSuccess] = useState<boolean>(false);
+  // Remove showLoginSuccess state - we'll handle this differently
   // New state to control navigation redirection
   const [shouldRedirect, setShouldRedirect] = useState<boolean>(false);
 
@@ -28,31 +28,10 @@ const Navbar = () => {
       setIsLoading(false); // Set loading to false once we have auth state
       
       console.log('Auth state changed:', { wasAuthenticated, isUserAuthenticated });
-      console.log('Fresh login flag:', localStorage.getItem("freshLogin"));
       
-      // Show login success alert ONLY if user just logged in (not on refresh)
-      if (isUserAuthenticated) {
-        // Check if this is a fresh login using local storage flag
-        const freshLogin = localStorage.getItem("freshLogin");
-        if (freshLogin === "true") {
-          console.log("Fresh login detected, showing success message");
-          
-          // Slight delay to ensure component is fully mounted
-          setTimeout(() => {
-            setShowLoginSuccess(true);
-            setAlert({
-              type: "success",
-              message: "Login successful! Welcome to MyNotes!"
-            });
-            // Clear the flag after showing the message
-            localStorage.removeItem("freshLogin");
-          }, 500);
-          
-          // Return early - don't do any redirects until user confirms the alert
-          return;
-        }
-        
-        // Only redirect if shouldRedirect flag is true or not on login/signup pages
+      // Only redirect if shouldRedirect flag is true or not on login/signup pages
+      if (isUserAuthenticated) {  
+        // Check for the redirect flag - don't check freshLogin here
         if (shouldRedirect || 
             (location.pathname !== '/login' && location.pathname !== '/signup')) {
           // Redirect authenticated users to HomeNote if they're on the landing page
@@ -100,19 +79,6 @@ const Navbar = () => {
   };
 
   const handleAlertConfirm = async () => {
-    // Handle login success alert
-    if (showLoginSuccess) {
-      console.log("Confirming login success alert");
-      setAlert(null);
-      setShowLoginSuccess(false);
-      // Allow redirects after they've seen the welcome message
-      setShouldRedirect(true);
-      
-      // After confirming login success, navigate to home
-      navigate('/home');
-      return;
-    }
-    
     // Handle logout confirmation
     if (alert?.type === "success" && alert?.message === "Are you sure you want to log out?") {
       try {
@@ -171,6 +137,16 @@ const Navbar = () => {
     setIsMenuOpen(false);
   };
 
+  // Update shouldRedirect when freshLogin is detected
+  useEffect(() => {
+    const freshLogin = localStorage.getItem("freshLogin");
+    if (freshLogin === "true") {
+      // We don't need to handle the alert here anymore
+      // Since login component will handle it
+      setShouldRedirect(true);
+    }
+  }, [location.pathname]);
+
   // Show a minimal navbar or nothing while authentication state is loading
   if (isLoading) {
     return (
@@ -185,8 +161,6 @@ const Navbar = () => {
     );
   }
 
-  console.log("Current alert state:", alert, "showLoginSuccess:", showLoginSuccess);
-
   return (
     <nav className="w-full p-2 shadow-md bg-white">
       <div className="container mx-auto flex justify-between items-center w-[90%] p-2 flex-wrap relative">
@@ -200,14 +174,13 @@ const Navbar = () => {
             <Alert
               type={alert.type}
               message={alert.message}
-              onConfirm={showLoginSuccess ? handleAlertConfirm : 
-                alert.message === "You have been successfully logged out." ? handleLogoutSuccess : handleAlertConfirm}
+              onConfirm={alert.message === "You have been successfully logged out." ? 
+                handleLogoutSuccess : handleAlertConfirm}
               onCancel={handleAlertCancel}
-              confirmText={showLoginSuccess ? "OK Done!" : 
-                alert.message === "You have been successfully logged out." ? "OK" : "Yes, Log Out"}
+              confirmText={alert.message === "You have been successfully logged out." ? 
+                "OK" : "Yes, Log Out"}
               cancelText="Cancel"
-              showCancelButton={!showLoginSuccess && 
-                alert.message !== "You have been successfully logged out." && 
+              showCancelButton={alert.message !== "You have been successfully logged out." && 
                 alert.message !== "Failed to log out. Please try again."}
             />
           </div>
